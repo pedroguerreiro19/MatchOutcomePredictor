@@ -81,15 +81,12 @@ def _rolling_team_stats(team_games: pd.DataFrame, n=5):
 
     return g
 
-def build_features(matches: pd.DataFrame, n=5) -> pd.DataFrame:
+def build_features(matches: pd.DataFrame, n=5) -> tuple[pd.DataFrame, np.ndarray]:
     m = matches.copy()
     m = m.dropna(subset=["date","home_team","away_team","home_goals","away_goals"]).sort_values("date")
     m = compute_elo(m)
 
-    target = np.select(
-        [m["home_goals"] > m["away_goals"], m["home_goals"] == m["away_goals"]],
-        ["HOME_WIN","DRAW"], default="AWAY_WIN"
-    )
+    target = np.where(m["home_goals"] > m["away_goals"], 1, 0)
 
     home = _team_view(m, "home")
     away = _team_view(m, "away")
@@ -102,9 +99,9 @@ def build_features(matches: pd.DataFrame, n=5) -> pd.DataFrame:
     A = rolled[rolled["is_home"]==0].add_prefix("away_").reset_index(drop=True)
 
     X = pd.concat([m.reset_index(drop=True), H, A], axis=1)
-    X["target"] = target
 
-    return X.dropna(subset=[f"home_gf_r{n}", f"away_gf_r{n}"], how="any")
+    return X.dropna(subset=[f"home_gf_r{n}", f"away_gf_r{n}"], how="any"), target
+
 
 def build_features_for_match(hist: pd.DataFrame, home: str, away: str, when_pd: pd.Timestamp, n=5) -> pd.DataFrame:
     past = hist[hist["date"] < when_pd].copy().sort_values("date")
