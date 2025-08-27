@@ -35,7 +35,8 @@ N_ROLL = 5
 
 print("Loading:", DATA)
 df = pd.read_csv(DATA, parse_dates=["date"])
-Xy, target = build_features(df, n=N_ROLL)
+X, target = build_features(df, n=N_ROLL)
+
 
 FORBIDDEN = {
     "home_goals","away_goals","goal_diff","goals_total",
@@ -43,8 +44,8 @@ FORBIDDEN = {
     "home_points","away_points"
 }
 
-num_cols = [c for c in Xy.select_dtypes(include=[np.number]).columns if c not in FORBIDDEN]
-X = Xy[num_cols].copy().fillna(0.0)
+num_cols = [c for c in X.select_dtypes(include=[np.number]).columns if c not in FORBIDDEN]
+X = X[num_cols].copy().fillna(0.0)
 
 print("Samples:", len(X))
 print("Target dist:", dict(zip([0,1], np.bincount(target))))
@@ -85,15 +86,14 @@ if HAVE_XGB:
 best = None
 for name, clf in models.items():
     print(f"\n=== {name} ===")
-    Xtr, Xte = (X_train_s, X_test_s)
-    clf.fit(Xtr, y_train)
-    pred = clf.predict(Xte)
+    clf.fit(X_train_s, y_train)
+    pred = clf.predict(X_test_s)
     acc = accuracy_score(y_test, pred)
     f1  = f1_score(y_test, pred, average="binary")
     print(f"acc={acc:.3f} | f1={f1:.3f}")
     print(classification_report(y_test, pred, target_names=["AwayWin/Draw","HomeWin"]))
     if hasattr(clf, "predict_proba"):
-        proba = clf.predict_proba(Xte)
+        proba = clf.predict_proba(X_test_s)
         print("log_loss:", f"{log_loss(y_test, proba):.3f}")
 
     if best is None or f1 > best["f1"]:

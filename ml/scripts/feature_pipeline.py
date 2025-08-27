@@ -100,7 +100,11 @@ def build_features(matches: pd.DataFrame, n=5) -> tuple[pd.DataFrame, np.ndarray
 
     X = pd.concat([m.reset_index(drop=True), H, A], axis=1)
 
-    return X.dropna(subset=[f"home_gf_r{n}", f"away_gf_r{n}"], how="any"), target
+    mask = X[[f"home_gf_r{n}", f"away_gf_r{n}"]].notna().all(axis=1)
+    X = X.loc[mask].reset_index(drop=True)
+    target = target[mask.to_numpy()]
+
+    return X, target
 
 
 def build_features_for_match(hist: pd.DataFrame, home: str, away: str, when_pd: pd.Timestamp, n=5) -> pd.DataFrame:
