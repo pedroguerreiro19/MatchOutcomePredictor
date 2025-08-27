@@ -25,6 +25,7 @@ def _team_view(m, side):
     })
     return out
 
+
 def compute_elo(matches: pd.DataFrame, k=20.0, home_adv=60.0, start_elo=1500.0) -> pd.DataFrame:
  
     m = matches.sort_values("date").reset_index(drop=True).copy()
@@ -126,4 +127,33 @@ def build_features_for_match(hist: pd.DataFrame, home: str, away: str, when_pd: 
     elo_df = pd.DataFrame({"home_elo_pre":[home_elo_pre], "away_elo_pre":[away_elo_pre], "home_elo_diff":[home_elo_pre-away_elo_pre]})
 
     X = pd.concat([elo_df.reset_index(drop=True), H.reset_index(drop=True), A.reset_index(drop=True)], axis=1)
+    h2h = _h2h_features(past, home, away, n=5)
+    X = pd.concat([elo_df.reset_index(drop=True),
+               H.reset_index(drop=True),
+               A.reset_index(drop=True),
+               h2h.reset_index(drop=True)], axis=1)
     return X
+
+def _h2h_features(hist: pd.DataFrame, home: str, away: str, n=5):
+    h2h = hist[((hist["home_team"] == home) & (hist["away_team"] == away)) |
+               ((hist["home_team"] == away) & (hist["away_team"] == home))] \
+              .sort_values("date").tail(n)
+
+    if h2h.empty:
+        return pd.DataFrame([{
+            "h2h_games": 0,
+            "h2h_home_win_rate": 0.0,
+            "h2h_goal_diff_avg": 0.0
+        }])
+
+    gd = np.where(h2h["home_team"].eq(home),
+                  h2h["home_goals"] - h2h["away_goals"],
+                  h2h["away_goals"] - h2h["home_goals"])
+
+    hw = (gd > 0).mean()
+
+    return pd.DataFrame([{
+        "h2h_games": len(h2h),
+        "h2h_home_win_rate": float(hw),
+        "h2h_goal_diff_avg": float(np.mean(gd))
+    }])

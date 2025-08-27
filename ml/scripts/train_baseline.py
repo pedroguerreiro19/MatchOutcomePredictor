@@ -155,7 +155,7 @@ bundle = {
     "model_name": best["name"],
     "scaler": scaler,                 
     "features": list(X.columns),      
-    "labels": CLASS_NAMES,            
+    "labels": list(y.unique()),            
     "n_roll": N_ROLL
 }
 joblib.dump(bundle, MODEL)

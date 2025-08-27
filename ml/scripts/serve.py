@@ -9,7 +9,7 @@ BUNDLE = joblib.load(BASE / "models" / "model.pkl")
 MODEL    = BUNDLE["model"]
 SCALER   = BUNDLE["scaler"]
 FEATURES = BUNDLE["features"]
-LABELS   = list(getattr(MODEL, "classes_", BUNDLE.get("labels", ["AWAY_WIN","DRAW","HOME_WIN"])))
+LABELS = BUNDLE.get("labels", ["AWAY_WIN","DRAW","HOME_WIN"])
 N_ROLL   = int(BUNDLE.get("n_roll", 5))  
 
 HIST = pd.read_csv(DATA, parse_dates=["date"]).sort_values("date")
@@ -106,7 +106,7 @@ def predict():
 
     Xs = SCALER.transform(X.values)
     proba = MODEL.predict_proba(Xs)[0]
-    probs = {cls: float(p) for cls, p in zip(LABELS, proba)}
+    probs = {str(cls): float(p) for cls, p in zip(LABELS, proba)}
     winner = max(probs, key=probs.get)
 
     return jsonify({
