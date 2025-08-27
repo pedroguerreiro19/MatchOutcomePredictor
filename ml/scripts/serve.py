@@ -89,28 +89,23 @@ def predict():
     data = request.get_json(silent=True) or {}
     home = data.get("home_team")
     away = data.get("away_team")
-    date = data.get("match_date")
 
-    if not home or not away or not date:
-        return jsonify({"error": "Body must contain home_team, away_team, match_date (YYYY-MM-DD)."}), 400
+    if not home or not away:
+        return jsonify({"error": "Body must contain home_team and away_team."}), 400
 
-    try:
-        when = pd.to_datetime(date)
-    except Exception:
-        return jsonify({"error": "wrong match_date format. Use YYYY-MM-DD."}), 400
-
+    when = HIST["date"].max() + pd.Timedelta(days=1)
     try:
         X = build_features_for_match(home, away, when, n=N_ROLL)
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-    Xs = SCALER.transform(X.values)
+    Xs = SCALER.transform(X)
     proba = MODEL.predict_proba(Xs)[0]
     probs = {str(cls): float(p) for cls, p in zip(LABELS, proba)}
     winner = max(probs, key=probs.get)
 
     return jsonify({
-        "home_team": home, "away_team": away, "match_date": date,
+        "home_team": home, "away_team": away, 
         "winner": winner, "probabilities": probs,
         "n_features": len(FEATURES)
     })
