@@ -1,18 +1,6 @@
 import pandas as pd
 import numpy as np
 
-NUM_FEATS_AVAILABLE = [
-    "home_points","away_points",
-    "home_goals","away_goals",
-    "home_shots","away_shots",
-    "home_shots_ot","away_shots_ot",
-    "home_corners","away_corners",
-    "home_yellow","away_yellow",
-    "home_red","away_red",
-    "ht_home_goals","ht_away_goals",
-    "goal_diff","goals_total",
-    "ht_goal_diff","ht_goals_total",
-]
 
 def _col(df, name, default=0.0):
     return df[name] if name in df.columns else default
@@ -37,21 +25,65 @@ def _team_view(m, side):
     })
     return out
 
+def compute_elo(matches: pd.DataFrame, k=20.0, home_adv=60.0, start_elo=1500.0) -> pd.DataFrame:
+ 
+    m = matches.sort_values("date").reset_index(drop=True).copy()
+    ratings = {}
+    home_pre = []
+    away_pre = []
+
+    for i, row in m.iterrows():
+        h, a = row["home_team"], row["away_team"]
+        rh = ratings.get(h, start_elo)
+        ra = ratings.get(a, start_elo)
+
+        home_pre.append(rh)
+        away_pre.append(ra)
+
+        hg, ag = row["home_goals"], row["away_goals"]
+        if pd.isna(hg) or pd.isna(ag):
+            continue
+
+        if hg > ag: s_h, s_a = 1.0, 0.0
+        elif hg < ag: s_h, s_a = 0.0, 1.0
+        else: s_h, s_a = 0.5, 0.5
+
+        exp_h = 1.0 / (1.0 + 10 ** (-( (rh + home_adv) - ra ) / 400.0))
+        exp_a = 1.0 - exp_h
+
+        ratings[h] = rh + k * (s_h - exp_h)
+        ratings[a] = ra + k * (s_a - exp_a)
+
+    m["home_elo_pre"] = pd.Series(home_pre, index=m.index)
+    m["away_elo_pre"] = pd.Series(away_pre, index=m.index)
+    m["home_elo_diff"] = m["home_elo_pre"] - m["away_elo_pre"]
+    return m
+
 def _rolling_team_stats(team_games: pd.DataFrame, n=5):
     g = team_games.sort_values("date").copy()
     g["win"]  = (g["gf"] > g["ga"]).astype(int)
     g["draw"] = (g["gf"] == g["ga"]).astype(int)
     g["loss"] = (g["gf"] < g["ga"]).astype(int)
 
+    g["unbeaten"] = ((g["win"] == 1) | (g["draw"] == 1)).astype(int)
+    g["scored"]   = (g["gf"] > 0).astype(int)
+    g["clean"]    = (g["ga"] == 0).astype(int)
+
     roll_cols = ["points","gf","ga","win","draw","loss",
-                 "shots","shots_ot","corners","yellow","red","ht_gf","ht_ga"]
+                 "shots","shots_ot","corners","yellow","red","ht_gf","ht_ga",
+                 "unbeaten","scored","clean"]
+
     for c in roll_cols:
-        g[f"{c}_r{n}"] = g[c].rolling(n, min_periods=1).mean().shift(1)
+        g[f"{c}_r{n}"]   = g[c].rolling(n, min_periods=1).mean().shift(1)
+        g[f"{c}_ewm{n}"] = g[c].ewm(span=n, min_periods=1).mean().shift(1)
+        g[f"{c}_std{n}"] = g[c].rolling(n, min_periods=1).std().shift(1)
+
     return g
 
 def build_features(matches: pd.DataFrame, n=5) -> pd.DataFrame:
     m = matches.copy()
     m = m.dropna(subset=["date","home_team","away_team","home_goals","away_goals"]).sort_values("date")
+    m = compute_elo(m)
 
     target = np.select(
         [m["home_goals"] > m["away_goals"], m["home_goals"] == m["away_goals"]],
@@ -71,5 +103,27 @@ def build_features(matches: pd.DataFrame, n=5) -> pd.DataFrame:
     X = pd.concat([m.reset_index(drop=True), H, A], axis=1)
     X["target"] = target
 
+    return X.dropna(subset=[f"home_gf_r{n}", f"away_gf_r{n}"], how="any")
 
-    return X.dropna(subset=["home_gf_r5","away_gf_r5"], how="any")
+def build_features_for_match(hist: pd.DataFrame, home: str, away: str, when_pd: pd.Timestamp, n=5) -> pd.DataFrame:
+    past = hist[hist["date"] < when_pd].copy().sort_values("date")
+    if past.empty:
+        raise ValueError()
+
+    past = compute_elo(past)
+    stack = pd.concat([_team_view(past, "home"), _team_view(past, "away")], ignore_index=True)
+    rolled = stack.groupby("team", group_keys=False).apply(lambda df: _rolling_team_stats(df, n=n))
+
+    H = rolled[rolled["team"] == home].sort_values("date").tail(1).add_prefix("home_")
+    A = rolled[rolled["team"] == away].sort_values("date").tail(1).add_prefix("away_")
+    if H.empty or A.empty:
+        raise ValueError()
+
+    h_elo = past[(past["home_team"]==home) | (past["away_team"]==home)].sort_values("date").tail(1)
+    a_elo = past[(past["home_team"]==away) | (past["away_team"]==away)].sort_values("date").tail(1)
+    home_elo_pre = float(h_elo["home_elo_pre"].iloc[0]) if "home_elo_pre" in h_elo else np.nan
+    away_elo_pre = float(a_elo["home_elo_pre"].iloc[0]) if "home_elo_pre" in a_elo else np.nan
+    elo_df = pd.DataFrame({"home_elo_pre":[home_elo_pre], "away_elo_pre":[away_elo_pre], "home_elo_diff":[home_elo_pre-away_elo_pre]})
+
+    X = pd.concat([elo_df.reset_index(drop=True), H.reset_index(drop=True), A.reset_index(drop=True)], axis=1)
+    return X

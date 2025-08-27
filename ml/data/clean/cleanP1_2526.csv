@@ -1,18 +1,18 @@
-league_code,date,time,home_team,away_team,home_goals,away_goals,ft_result_raw,ht_home_goals,ht_away_goals,ht_result_raw,home_shots,away_shots,home_shots_ot,away_shots_ot,home_corners,away_corners,home_fouls,away_fouls,home_yellow,away_yellow,home_red,away_red,hour,weekday,home_points,away_points,goal_diff,goals_total,ht_goal_diff,ht_goals_total,home_bookings_pts,away_bookings_pts
-P1,2025-08-08,20:15,Casa Pia,Sp Lisbon,0,2,A,0,1,A,7,27,2,12,2,9,14,11,4,1,0,0,20,4,0,3,-2,2,-1,1,40,10
-P1,2025-08-09,15:30,Nacional,Gil Vicente,0,2,A,0,2,A,15,12,4,2,14,6,21,16,3,6,0,0,15,5,0,3,-2,2,-2,2,30,60
-P1,2025-08-09,20:30,Arouca,AVS,3,1,H,1,0,H,9,15,4,2,4,5,13,17,2,0,0,0,20,5,3,0,2,4,1,1,20,0
-P1,2025-08-10,17:00,Famalicao,Santa Clara,3,0,H,2,0,H,6,8,3,2,2,3,20,15,4,2,0,0,17,6,3,0,3,3,2,2,40,20
-P1,2025-08-10,20:30,Moreirense,Alverca,2,1,H,1,1,D,10,7,3,2,6,2,15,5,3,1,0,0,20,6,3,0,1,3,0,2,30,10
-P1,2025-08-10,20:30,Sp Braga,Tondela,3,0,H,2,0,H,8,7,6,3,5,3,10,9,1,3,0,0,20,6,3,0,3,3,2,2,10,30
-P1,2025-08-11,18:45,Estoril,Estrela,1,1,D,1,0,H,8,9,3,5,4,4,13,16,4,1,0,0,18,0,1,1,0,2,1,1,40,10
-P1,2025-08-11,20:45,Porto,Guimaraes,3,0,H,2,0,H,17,10,9,2,7,4,18,9,1,3,0,0,20,0,3,0,3,3,2,2,10,30
-P1,2025-08-15,15:30,AVS,Casa Pia,0,2,A,0,1,A,10,10,3,5,1,3,20,20,4,5,0,0,15,4,0,3,-2,2,-1,1,40,50
-P1,2025-08-16,15:30,Tondela,Famalicao,0,1,A,0,0,D,15,14,4,5,2,7,17,19,0,1,0,0,15,5,0,3,-1,1,0,0,0,10
-P1,2025-08-16,18:00,Guimaraes,Estoril,3,2,H,1,1,D,16,11,4,5,4,2,18,17,4,3,0,0,18,5,3,0,1,5,0,2,40,30
-P1,2025-08-16,20:30,Estrela,Benfica,0,1,A,0,0,D,15,14,2,3,5,4,14,23,3,3,0,0,20,5,0,3,-1,1,0,0,30,30
-P1,2025-08-17,15:30,Rio Ave,Nacional,1,1,D,1,0,H,20,13,9,6,6,6,16,18,2,4,0,1,15,6,1,1,0,2,1,1,20,65
-P1,2025-08-17,18:00,Alverca,Sp Braga,0,3,A,0,3,A,12,12,3,6,1,5,15,6,2,1,0,0,18,6,0,3,-3,3,-3,3,20,10
-P1,2025-08-17,18:00,Santa Clara,Moreirense,0,1,A,0,1,A,12,6,3,2,3,0,20,18,4,5,0,0,18,6,0,3,-1,1,-1,1,40,50
-P1,2025-08-17,20:30,Sp Lisbon,Arouca,6,0,H,3,0,H,19,7,10,1,6,1,7,7,1,0,0,1,20,6,3,0,6,6,3,3,10,25
-P1,2025-08-18,20:15,Gil Vicente,Porto,0,2,A,0,1,A,14,15,2,4,1,5,9,20,2,4,0,0,20,0,0,3,-2,2,-1,1,20,40
+league_code,date,time,home_team,away_team,home_goals,away_goals,ft_result,ht_home_goals,ht_away_goals,ht_result,home_shots,away_shots,home_shots_ot,away_shots_ot,home_corners,away_corners,home_fouls,away_fouls,home_yellow,away_yellow,home_red,away_red,hour,weekday,ft_result_raw,home_points,away_points,goal_diff,goals_total,ht_result_raw,ht_goal_diff,ht_goals_total,home_bookings_pts,away_bookings_pts
+P1,2025-08-08,20:15,Casa Pia,Sp Lisbon,0,2,A,0,1,A,7,27,2,12,2,9,14,11,4,1,0,0,20,4,A,0,3,-2,2,A,-1,1,40,10
+P1,2025-08-09,15:30,Nacional,Gil Vicente,0,2,A,0,2,A,15,12,4,2,14,6,21,16,3,6,0,0,15,5,A,0,3,-2,2,A,-2,2,30,60
+P1,2025-08-09,20:30,Arouca,AVS,3,1,H,1,0,H,9,15,4,2,4,5,13,17,2,0,0,0,20,5,H,3,0,2,4,H,1,1,20,0
+P1,2025-08-10,17:00,Famalicao,Santa Clara,3,0,H,2,0,H,6,8,3,2,2,3,20,15,4,2,0,0,17,6,H,3,0,3,3,H,2,2,40,20
+P1,2025-08-10,20:30,Moreirense,Alverca,2,1,H,1,1,D,10,7,3,2,6,2,15,5,3,1,0,0,20,6,H,3,0,1,3,D,0,2,30,10
+P1,2025-08-10,20:30,Sp Braga,Tondela,3,0,H,2,0,H,8,7,6,3,5,3,10,9,1,3,0,0,20,6,H,3,0,3,3,H,2,2,10,30
+P1,2025-08-11,18:45,Estoril,Estrela,1,1,D,1,0,H,8,9,3,5,4,4,13,16,4,1,0,0,18,0,D,1,1,0,2,H,1,1,40,10
+P1,2025-08-11,20:45,Porto,Guimaraes,3,0,H,2,0,H,17,10,9,2,7,4,18,9,1,3,0,0,20,0,H,3,0,3,3,H,2,2,10,30
+P1,2025-08-15,15:30,AVS,Casa Pia,0,2,A,0,1,A,10,10,3,5,1,3,20,20,4,5,0,0,15,4,A,0,3,-2,2,A,-1,1,40,50
+P1,2025-08-16,15:30,Tondela,Famalicao,0,1,A,0,0,D,15,14,4,5,2,7,17,19,0,1,0,0,15,5,A,0,3,-1,1,D,0,0,0,10
+P1,2025-08-16,18:00,Guimaraes,Estoril,3,2,H,1,1,D,16,11,4,5,4,2,18,17,4,3,0,0,18,5,H,3,0,1,5,D,0,2,40,30
+P1,2025-08-16,20:30,Estrela,Benfica,0,1,A,0,0,D,15,14,2,3,5,4,14,23,3,3,0,0,20,5,A,0,3,-1,1,D,0,0,30,30
+P1,2025-08-17,15:30,Rio Ave,Nacional,1,1,D,1,0,H,20,13,9,6,6,6,16,18,2,4,0,1,15,6,D,1,1,0,2,H,1,1,20,65
+P1,2025-08-17,18:00,Alverca,Sp Braga,0,3,A,0,3,A,12,12,3,6,1,5,15,6,2,1,0,0,18,6,A,0,3,-3,3,A,-3,3,20,10
+P1,2025-08-17,18:00,Santa Clara,Moreirense,0,1,A,0,1,A,12,6,3,2,3,0,20,18,4,5,0,0,18,6,A,0,3,-1,1,A,-1,1,40,50
+P1,2025-08-17,20:30,Sp Lisbon,Arouca,6,0,H,3,0,H,19,7,10,1,6,1,7,7,1,0,0,1,20,6,H,3,0,6,6,H,3,3,10,25
+P1,2025-08-18,20:15,Gil Vicente,Porto,0,2,A,0,1,A,14,15,2,4,1,5,9,20,2,4,0,0,20,0,A,0,3,-2,2,A,-1,1,20,40

@@ -14,12 +14,13 @@ RENAME = {
     "Time": "time",
     "HomeTeam": "home_team",
     "AwayTeam": "away_team",
-    "FTHG": "home_goals",
-    "FTAG": "away_goals",
-    "FTR":  "ft_result_raw",   
+    "FTHG": "home_goals", "HG": "home_goals",
+    "FTAG": "away_goals", "AG": "away_goals",
+    "FTR":  "ft_result", "Res": "ft_result",
     "HTHG": "ht_home_goals",
     "HTAG": "ht_away_goals",
-    "HTR":  "ht_result_raw",   
+    "HTR":  "ht_result",
+
     "Attendance": "attendance",
     "Referee": "referee",
     "HS": "home_shots", "AS": "away_shots",
@@ -71,6 +72,7 @@ def process_one(in_path: Path) -> Path:
 
     if "ft_result_raw" not in out.columns and {"home_goals","away_goals"}.issubset(out.columns):
         out["ft_result_raw"] = [_result_from_goals(hg, ag) for hg, ag in zip(out["home_goals"], out["away_goals"])]
+    
     if {"home_goals","away_goals"}.issubset(out.columns):
         hp, ap = zip(*[_points(hg, ag) for hg, ag in zip(out["home_goals"], out["away_goals"])])
         out["home_points"], out["away_points"] = hp, ap
@@ -94,6 +96,9 @@ def process_one(in_path: Path) -> Path:
         out["away_bookings_pts"] = 10*_to_num(out["away_yellow"]) + 25*_to_num(out["away_red"])
 
     out = out.dropna(subset=["date"]).reset_index(drop=True)
+
+    for c in out.select_dtypes(include="string").columns:
+        out[c] = out[c].str.strip()
 
     out_path = CLEAN_PATH / f"clean{in_path.stem}.csv"
     out.to_csv(out_path, index=False)
