@@ -36,7 +36,7 @@ def _team_view(df, side):
     })
 
 
-def _roll_team(g, n=5):
+def _roll_team(g, n=10):
     g = g.sort_values("date").copy()
     g["win"]  = (g["gf"] > g["ga"]).astype(int)
     g["draw"] = (g["gf"] == g["ga"]).astype(int)

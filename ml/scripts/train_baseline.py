@@ -6,10 +6,7 @@ import warnings
 
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.metrics import accuracy_score, f1_score, classification_report, log_loss
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.svm import SVC
+from sklearn.ensemble import GradientBoostingClassifier
 
 try:
     from imblearn.over_sampling import RandomOverSampler
@@ -17,14 +14,12 @@ try:
 except Exception:
     HAVE_IMB = False
 
-
-HAVE_XGB = HAVE_LGB = False
+HAVE_XGB = False
 try:
     from xgboost import XGBClassifier
     HAVE_XGB = True
 except Exception:
     pass
-
 
 from feature_pipeline import build_features  
 
@@ -36,8 +31,7 @@ DATA = BASE / "data" / "clean" / "matches_P1_2122_2526.csv"
 MODEL = BASE / "models" / "model.pkl"
 MODEL.parent.mkdir(parents=True, exist_ok=True)
 
-N_ROLL = 5  
-
+N_ROLL = 10
 
 def ensure_unique_columns(df: pd.DataFrame) -> pd.DataFrame:
     seen = {}
@@ -120,26 +114,23 @@ if HAVE_IMB:
     X_train, y_train = ros.fit_resample(X_train, y_train)
     print("After oversample:", dict(zip(CLASS_NAMES, np.bincount(y_train))))
 else:
-    print("imblearn não disponível — segue sem oversampling.")
+    print("imblearn not found.")
 
 scaler = StandardScaler(with_mean=True)
 X_train_s = scaler.fit_transform(X_train)
 X_test_s  = scaler.transform(X_test)
 
-models: dict[str, tuple[str, object]] = {
-    "LogisticRegression": ("scaled", LogisticRegression(max_iter=5000, class_weight="balanced", random_state=RND)),
-    "RandomForest":      ("raw",    RandomForestClassifier(n_estimators=700, random_state=RND, class_weight="balanced_subsample")),
-    "GradientBoosting":  ("raw",    GradientBoostingClassifier(random_state=RND)),
-    "NaiveBayes":        ("raw",    GaussianNB()),
-    "SVC_RBF":           ("scaled", SVC(kernel="rbf", probability=True, class_weight="balanced", random_state=RND)),
+
+models = {
+    "GradientBoosting": ("raw", GradientBoostingClassifier(random_state=RND)),
 }
 if HAVE_XGB:
     models["XGBoost"] = ("raw", XGBClassifier(
-        n_estimators=800, learning_rate=0.05, max_depth=5,
+        n_estimators=800, learning_rate=0.05, max_depth=6,
         subsample=0.9, colsample_bytree=0.8, reg_lambda=1.0,
-        objective="multi:softprob", eval_metric="mlogloss", random_state=RND
+        objective="multi:softprob", eval_metric="mlogloss",
+        random_state=RND, n_jobs=-1
     ))
-
 
 best = None
 for name, (kind, clf) in models.items():
@@ -153,9 +144,9 @@ print(f"\n>>> Best model: {best['name']}  acc={best['acc']:.3f}  f1={best['f1']:
 bundle = {
     "model": best["clf"],
     "model_name": best["name"],
-    "scaler": scaler,                 
-    "features": list(X.columns),      
-    "labels": list(y.unique()),            
+    "scaler": scaler,
+    "features": list(X.columns),
+    "labels": CLASS_NAMES,   
     "n_roll": N_ROLL
 }
 joblib.dump(bundle, MODEL)
