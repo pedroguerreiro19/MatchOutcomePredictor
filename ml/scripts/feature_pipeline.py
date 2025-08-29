@@ -1,20 +1,21 @@
 import pandas as pd
-import numpy as np 
+import numpy as np
 
-def _team_view(m, side):
+
+def _team_view(m: pd.DataFrame, side: str) -> pd.DataFrame:
     opp = "away" if side == "home" else "home"
     return pd.DataFrame({
         "date": m["date"],
         "team": m[f"{side}_team"],
         "opp":  m[f"{opp}_team"],
-        "is_home": 1 if side == "home" else 0,
+        "is_home": 1 if side == "home" else -1,
         "gf": m[f"{side}_goals"],
         "ga": m[f"{opp}_goals"],
-        "points": m[f"{side}_points"] if f"{side}_points" in m.columns else np.nan
+        "points": m.get(f"{side}_points", np.nan)
     })
 
 
-def compute_elo(matches: pd.DataFrame, k=20.0, home_adv=50.0, start_elo=1500.0) -> pd.DataFrame:
+def compute_elo(matches: pd.DataFrame, k=20.0, home_adv=0.0, start_elo=1500.0) -> pd.DataFrame:
     m = matches.sort_values("date").reset_index(drop=True).copy()
     ratings = {}
     home_pre, away_pre = [], []
@@ -44,6 +45,7 @@ def compute_elo(matches: pd.DataFrame, k=20.0, home_adv=50.0, start_elo=1500.0) 
     m["home_elo_pre"] = home_pre
     m["away_elo_pre"] = away_pre
     m["elo_diff"] = m["home_elo_pre"] - m["away_elo_pre"]
+    m["elo_abs_diff"] = m["elo_diff"].abs()
     return m
 
 
@@ -84,7 +86,8 @@ def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFra
     target = None
     if mode == "train":
         m = m.dropna(subset=["home_goals","away_goals"])
-        target = np.where(m["home_goals"] > m["away_goals"], 1, 0)
+        target = np.where(m["home_goals"] > m["away_goals"], 1,
+                 np.where(m["home_goals"] < m["away_goals"], 0, 2))  # 0=AwayWin,1=HomeWin,2=Draw
 
     m = compute_elo(m)
 
@@ -112,9 +115,56 @@ def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFra
 
     X = pd.concat([X.reset_index(drop=True), ranks_df.reset_index(drop=True)], axis=1)
 
-    valid = X[[f"home_gf_r{n}", f"away_gf_r{n}"]].notna().all(axis=1)
+    X[f"gf_diff_r{n}"] = X[f"home_gf_r{n}"] - X[f"away_gf_r{n}"]
+    X[f"ga_diff_r{n}"] = X[f"home_ga_r{n}"] - X[f"away_ga_r{n}"]
+    X[f"points_diff_r{n}"] = X[f"home_points_r{n}"] - X[f"away_points_r{n}"]
+    X["winrate_diff"] = X[f"home_win_r{n}"] - X[f"away_win_r{n}"]
+    X["goal_balance_diff"] = (X[f"home_gf_r{n}"] - X[f"home_ga_r{n}"]) - (X[f"away_gf_r{n}"] - X[f"away_ga_r{n}"])
+
+    valid = X[[f"home_gf_r{n}", f"away_gf_r{n}"]].notna().any(axis=1)
     X = X.loc[valid].reset_index(drop=True)
+
+
     if target is not None:
         target = target[valid.to_numpy()]
-
+        
+    X = X.select_dtypes(include=[np.number]).copy().fillna(0.0)
     return X, target
+
+
+def build_features_for_match(hist: pd.DataFrame, home: str, away: str, n=5, features=None) -> pd.DataFrame:
+    past = hist.copy()
+    if past.empty:
+        raise ValueError("No history available.")
+
+    past = compute_elo(past)
+
+    home_view = _team_view(past, "home")
+    away_view = _team_view(past, "away")
+    stack = pd.concat([home_view, away_view], ignore_index=True)
+
+    rolled = stack.groupby("team", group_keys=False).apply(lambda df: _rolling_team_stats(df, n=n))
+
+    H = rolled[rolled["team"] == home].sort_values("date").tail(1).add_prefix("home_")
+    A = rolled[rolled["team"] == away].sort_values("date").tail(1).add_prefix("away_")
+    if H.empty or A.empty:
+        raise ValueError(f"Not enough history for {home} or {away}.")
+
+    X = pd.concat([H.reset_index(drop=True), A.reset_index(drop=True)], axis=1)
+
+    last_date = past["date"].max()
+    ranks = _ranking_at_date(past, last_date + pd.Timedelta(days=1))
+    X["home_rank"] = ranks.get(home, np.nan)
+    X["away_rank"] = ranks.get(away, np.nan)
+    X["rank_diff"] = X["away_rank"] - X["home_rank"]
+
+    X[f"gf_diff_r{n}"] = X[f"home_gf_r{n}"] - X[f"away_gf_r{n}"]
+    X[f"ga_diff_r{n}"] = X[f"home_ga_r{n}"] - X[f"away_ga_r{n}"]
+    X[f"points_diff_r{n}"] = X[f"home_points_r{n}"] - X[f"away_points_r{n}"]
+    X["winrate_diff"] = X[f"home_win_r{n}"] - X[f"away_win_r{n}"]
+    X["goal_balance_diff"] = (X[f"home_gf_r{n}"] - X[f"home_ga_r{n}"]) - (X[f"away_gf_r{n}"] - X[f"away_ga_r{n}"])
+
+    if features is not None:
+        X = X.reindex(columns=features, fill_value=0.0)
+    X = X.select_dtypes(include=[np.number]).copy().fillna(0.0)
+    return X
