@@ -1,13 +1,19 @@
-import { useState } from "react";
-import axios from "./api";
+import { useState, useEffect } from "react";
+import axios from "axios";
+import api from "./api";
 import { clubs } from "./clubs";
 import TeamBox from "./components/TeamBox";
 import "./App.css";
 
 export default function App() {
+  const [teams, setTeams] = useState([]);
   const [teamA, setTeamA] = useState(null);
   const [teamB, setTeamB] = useState(null);
   const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    api.get("/teams").then(res => setTeams(res.data));
+  }, []);
 
   const handlePredict = async () => {
     if (!teamA || !teamB) {
