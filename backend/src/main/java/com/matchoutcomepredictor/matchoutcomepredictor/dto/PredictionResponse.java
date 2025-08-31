@@ -16,4 +16,5 @@ public class PredictionResponse {
 
     public String getPrediction() { return prediction; }
     public Map<String, Double> getProbabilities() { return probabilities; }
+    public List<String> getKeyFactors() { return keyFactors; }
 }

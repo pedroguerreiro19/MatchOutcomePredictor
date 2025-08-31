@@ -151,3 +151,28 @@ html, body {
   font-size: 1.3rem;
   backdrop-filter: blur(10px);
 }
+
+.result h2 {
+  margin-bottom: 10px;
+  color: #ffeb3b;
+}
+
+.result h3 {
+  margin-top: 15px;
+  margin-bottom: 5px;
+  font-size: 1.2rem;
+  color: #90caf9;
+}
+
+.result ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.result li {
+  margin: 4px 0;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+}

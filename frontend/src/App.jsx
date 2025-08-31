@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import api from "./api";
-import { clubs } from "./clubs";
 import TeamBox from "./components/TeamBox";
 import "./App.css";
 
@@ -25,16 +23,15 @@ export default function App() {
         teamA: teamA.name,
         teamB: teamB.name,
       });
-      setResult(res.data.prediction);
+      setResult(res.data);
     } catch (err) {
       console.error(err);
-      setResult("Error predicting");
+      setResult({ prediction: "Error", probabilities: {}, keyFactors: [] });
     }
   };
 
   return (
     <div className="app">
-      {/* Título e Info */}
       <h1 className="title">Portuguese League Match Outcome Predictor</h1>
       <p className="info-text">
         This project uses machine learning to predict the outcome of matches in
@@ -48,16 +45,16 @@ export default function App() {
           <TeamBox team={teamA} />
           <select
             onChange={(e) =>
-              setTeamA(clubs.find((c) => c.name === e.target.value))
+              setTeamA(teams.find((t) => t.name === e.target.value))
             }
             value={teamA?.name || ""}
           >
             <option value="">Choose home team</option>
-            {clubs
-              .filter((c) => c.name !== teamB?.name)
-              .map((club) => (
-                <option key={club.name} value={club.name}>
-                  {club.name}
+            {teams
+              .filter((c) => t.name !== teamB?.name)
+              .map((team) => (
+                <option key={team.name} value={team.name}>
+                  {team.name}
                 </option>
               ))}
           </select>
@@ -69,16 +66,16 @@ export default function App() {
           <TeamBox team={teamB} />
           <select
             onChange={(e) =>
-              setTeamB(clubs.find((c) => c.name === e.target.value))
+              setTeamB(teams.find((c) => t.name === e.target.value))
             }
             value={teamB?.name || ""}
           >
             <option value="">Choose away team</option>
-            {clubs
-              .filter((c) => c.name !== teamA?.name)
-              .map((club) => (
-                <option key={club.name} value={club.name}>
-                  {club.name}
+            {teams
+              .filter((t) => t.name !== teamA?.name)
+              .map((team) => (
+                <option key={team.name} value={team.name}>
+                  {team.name}
                 </option>
               ))}
           </select>
@@ -89,8 +86,25 @@ export default function App() {
         Predict match
       </button>
 
-      {/* Resultado */}
-      {result && <div className="result">{result}</div>}
+      {result && (
+        <div className="result">
+          <h2>Predicted Winner: {result.prediction}</h2>
+          <h3>Probabilities:</h3>
+            <ul>
+              {Object.entries(result.probabilities).map(([team, prob]) => (
+                <li key={team}>
+                  {team}: {prob * 100}.toFixed(2)%
+                </li>
+              ))}
+            </ul>
+            <h3>Key factors: </h3>
+            <ul>
+              {result.keyFactors.map((factor, idx) => (
+                <li key={idx}>{factor}</li>
+              ))}
+            </ul>
+            </div>
+      )}
     </div>
   );
 }
