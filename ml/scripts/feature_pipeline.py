@@ -97,7 +97,7 @@ def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFra
         m = m.dropna(subset=["home_goals","away_goals"]).copy()
         target = np.where(
             m["home_goals"] > m["away_goals"], 1,
-            np.where(m["home_goals"] < m["away_goals"], 0, 2) 
+            np.where(m["home_goals"] < m["away_goals"], 0, 2)  # 0=AwayWin, 1=HomeWin, 2=Draw
         )
 
     m = compute_elo(m)
@@ -109,7 +109,6 @@ def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFra
 
     H = rolled[rolled["team"].isin(m["home_team"])].add_prefix("home_").reset_index(drop=True)
     A = rolled[rolled["team"].isin(m["away_team"])].add_prefix("away_").reset_index(drop=True)
-
     X = pd.concat([m.reset_index(drop=True), H, A], axis=1)
 
     ranks_list = []
@@ -134,8 +133,8 @@ def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFra
     Xf = pd.DataFrame(feats).fillna(0.0)
 
     if target is not None:
-        target = target[:len(Xf)]
-        return Xf.reset_index(drop=True), target
+        min_len = min(len(Xf), len(target))
+        return Xf.iloc[:min_len].reset_index(drop=True), target[:min_len]
     else:
         return Xf.reset_index(drop=True), None
         
