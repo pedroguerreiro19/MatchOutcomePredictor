@@ -1,17 +1,20 @@
 import pandas as pd
 import numpy as np
 
-
 def _team_view(m: pd.DataFrame, side: str) -> pd.DataFrame:
     opp = "away" if side == "home" else "home"
     return pd.DataFrame({
         "date": m["date"],
         "team": m[f"{side}_team"],
         "opp":  m[f"{opp}_team"],
-        "is_home": 1 if side == "home" else -1,
         "gf": m[f"{side}_goals"],
         "ga": m[f"{opp}_goals"],
-        "points": m.get(f"{side}_points", np.nan)
+        "points": np.where(
+            m[f"{side}_goals"].notna() & m[f"{opp}_goals"].notna(),
+            np.where(m[f"{side}_goals"] > m[f"{opp}_goals"], 3,
+            np.where(m[f"{side}_goals"] == m[f"{opp}_goals"], 1, 0)),
+            np.nan
+        )
     })
 
 
@@ -45,7 +48,6 @@ def compute_elo(matches: pd.DataFrame, k=20.0, home_adv=0.0, start_elo=1500.0) -
     m["home_elo_pre"] = home_pre
     m["away_elo_pre"] = away_pre
     m["elo_diff"] = m["home_elo_pre"] - m["away_elo_pre"]
-    m["elo_abs_diff"] = m["elo_diff"].abs()
     return m
 
 
@@ -66,40 +68,47 @@ def _ranking_at_date(df: pd.DataFrame, date: pd.Timestamp) -> dict:
     if past.empty:
         return {}
 
-    standings = past.groupby("home_team").agg(
-        pts=("home_points", "sum"),
-        gf=("home_goals", "sum"),
-        ga=("away_goals", "sum")
-    ).reset_index()
+    pts_home = np.where(past["home_goals"] > past["away_goals"], 3,
+                 np.where(past["home_goals"] == past["away_goals"], 1, 0))
+    pts_away = np.where(past["away_goals"] > past["home_goals"], 3,
+                 np.where(past["away_goals"] == past["home_goals"], 1, 0))
+
+    standings = (
+        pd.concat([
+            pd.DataFrame({"team": past["home_team"], "pts": pts_home, "gf": past["home_goals"], "ga": past["away_goals"]}),
+            pd.DataFrame({"team": past["away_team"], "pts": pts_away, "gf": past["away_goals"], "ga": past["home_goals"]})
+        ])
+        .groupby("team", as_index=False)
+        .sum()
+    )
 
     standings["gd"] = standings["gf"] - standings["ga"]
     standings = standings.sort_values(["pts","gd","gf"], ascending=False)
     standings["rank"] = range(1, len(standings) + 1)
 
-    return dict(zip(standings["home_team"], standings["rank"]))
+    return dict(zip(standings["team"], standings["rank"]))
 
 
 def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFrame, np.ndarray]:
-    m = matches.dropna(subset=["date","home_team","away_team"])\
-               .sort_values("date").copy()
+    m = matches.dropna(subset=["date","home_team","away_team"]).sort_values("date").copy()
 
     target = None
     if mode == "train":
-        m = m.dropna(subset=["home_goals","away_goals"])
-        target = np.where(m["home_goals"] > m["away_goals"], 1,
-                 np.where(m["home_goals"] < m["away_goals"], 0, 2))  # 0=AwayWin,1=HomeWin,2=Draw
+        m = m.dropna(subset=["home_goals","away_goals"]).copy()
+        target = np.where(
+            m["home_goals"] > m["away_goals"], 1,
+            np.where(m["home_goals"] < m["away_goals"], 0, 2) 
+        )
 
     m = compute_elo(m)
 
     home = _team_view(m, "home")
     away = _team_view(m, "away")
     stack = pd.concat([home, away], ignore_index=True)
+    rolled = stack.groupby("team", group_keys=False).apply(lambda df: _rolling_team_stats(df, n=n))
 
-    rolled = stack.groupby("team", group_keys=False)\
-                  .apply(lambda df: _rolling_team_stats(df, n=n))
-
-    H = rolled[rolled["is_home"] == 1].add_prefix("home_").reset_index(drop=True)
-    A = rolled[rolled["is_home"] == 0].add_prefix("away_").reset_index(drop=True)
+    H = rolled[rolled["team"].isin(m["home_team"])].add_prefix("home_").reset_index(drop=True)
+    A = rolled[rolled["team"].isin(m["away_team"])].add_prefix("away_").reset_index(drop=True)
 
     X = pd.concat([m.reset_index(drop=True), H, A], axis=1)
 
@@ -115,22 +124,21 @@ def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFra
 
     X = pd.concat([X.reset_index(drop=True), ranks_df.reset_index(drop=True)], axis=1)
 
-    X[f"gf_diff_r{n}"] = X[f"home_gf_r{n}"] - X[f"away_gf_r{n}"]
-    X[f"ga_diff_r{n}"] = X[f"home_ga_r{n}"] - X[f"away_ga_r{n}"]
-    X[f"points_diff_r{n}"] = X[f"home_points_r{n}"] - X[f"away_points_r{n}"]
-    X["winrate_diff"] = X[f"home_win_r{n}"] - X[f"away_win_r{n}"]
-    X["goal_balance_diff"] = (X[f"home_gf_r{n}"] - X[f"home_ga_r{n}"]) - (X[f"away_gf_r{n}"] - X[f"away_ga_r{n}"])
+    feats = {}
+    for c in ["gf","ga","win","draw","loss","points"]:
+        feats[f"{c}_diff_r{n}"] = X[f"home_{c}_r{n}"] - X[f"away_{c}_r{n}"]
 
-    valid = X[[f"home_gf_r{n}", f"away_gf_r{n}"]].notna().any(axis=1)
-    X = X.loc[valid].reset_index(drop=True)
+    feats["elo_diff"] = X["elo_diff"]
+    feats["rank_diff"] = X["rank_diff"]
 
+    Xf = pd.DataFrame(feats).fillna(0.0)
 
     if target is not None:
-        target = target[valid.to_numpy()]
+        target = target[:len(Xf)]
+        return Xf.reset_index(drop=True), target
+    else:
+        return Xf.reset_index(drop=True), None
         
-    X = X.select_dtypes(include=[np.number]).copy().fillna(0.0)
-    return X, target
-
 
 def build_features_for_match(hist: pd.DataFrame, home: str, away: str, n=5, features=None) -> pd.DataFrame:
     past = hist.copy()
@@ -150,21 +158,22 @@ def build_features_for_match(hist: pd.DataFrame, home: str, away: str, n=5, feat
     if H.empty or A.empty:
         raise ValueError(f"Not enough history for {home} or {away}.")
 
-    X = pd.concat([H.reset_index(drop=True), A.reset_index(drop=True)], axis=1)
+    base = pd.concat([H.reset_index(drop=True), A.reset_index(drop=True)], axis=1)
 
     last_date = past["date"].max()
     ranks = _ranking_at_date(past, last_date + pd.Timedelta(days=1))
-    X["home_rank"] = ranks.get(home, np.nan)
-    X["away_rank"] = ranks.get(away, np.nan)
-    X["rank_diff"] = X["away_rank"] - X["home_rank"]
+    rank_diff = (ranks.get(away, 0) - ranks.get(home, 0))
 
-    X[f"gf_diff_r{n}"] = X[f"home_gf_r{n}"] - X[f"away_gf_r{n}"]
-    X[f"ga_diff_r{n}"] = X[f"home_ga_r{n}"] - X[f"away_ga_r{n}"]
-    X[f"points_diff_r{n}"] = X[f"home_points_r{n}"] - X[f"away_points_r{n}"]
-    X["winrate_diff"] = X[f"home_win_r{n}"] - X[f"away_win_r{n}"]
-    X["goal_balance_diff"] = (X[f"home_gf_r{n}"] - X[f"home_ga_r{n}"]) - (X[f"away_gf_r{n}"] - X[f"away_ga_r{n}"])
+    feats = {}
+    for c in ["gf","ga","win","draw","loss","points"]:
+        feats[f"{c}_diff_r{n}"] = base[f"home_{c}_r{n}"].values[0] - base[f"away_{c}_r{n}"].values[0]
+
+    feats["elo_diff"] = (base.get("home_elo_pre", pd.Series([0])).values[0] - base.get("away_elo_pre", pd.Series([0])).values[0])
+    feats["rank_diff"] = rank_diff
+
+    X = pd.DataFrame([feats])
 
     if features is not None:
         X = X.reindex(columns=features, fill_value=0.0)
-    X = X.select_dtypes(include=[np.number]).copy().fillna(0.0)
+
     return X

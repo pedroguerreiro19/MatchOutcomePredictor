@@ -24,42 +24,52 @@ N_ROLL = 10
 print("Loading:", DATA)
 df = pd.read_csv(DATA, parse_dates=["date"]).sort_values("date").reset_index(drop=True)
 
-# Split train/test
 cut = int(len(df) * 0.8)
 df_train, df_test = df.iloc[:cut], df.iloc[cut:]
 
-# Build features
 X_train, y_train = build_features(df_train, n=N_ROLL, mode="train")
 X_test, y_test   = build_features(df_test,  n=N_ROLL, mode="train")
 
-# Remove columns que não devem estar no modelo
-drop_cols = ["home_goals", "away_goals", "Unnamed: 0"]
+drop_cols = [
+    "home_goals", "away_goals",
+    "home_points", "away_points",
+    "goal_diff", "goals_total",
+    "ht_goal_diff", "ht_goals_total",
+    f"home_points_r{N_ROLL}", f"away_points_r{N_ROLL}"
+]
+
 X_train = X_train.drop(columns=[c for c in drop_cols if c in X_train], errors="ignore")
 X_test  = X_test.drop(columns=[c for c in drop_cols if c in X_test], errors="ignore")
 
-# Garantir apenas numéricas
-X_train = X_train.select_dtypes(include=[np.number]).copy().fillna(0.0)
-X_test  = X_test.select_dtypes(include=[np.number]).copy().fillna(0.0)
 
-print("Train shape:", X_train.shape)
-print("Test shape:", X_test.shape)
-print("First rows train:\n", X_train.head())
+keep = [c for c in X_train.columns if any(kw in c for kw in [
+    "elo", "rank", "diff", "gf", "ga", "winrate", "goal_balance",
+    "shots_ot", "fouls", "yellow", "red", "corners"
+])]
+X_train = X_train[keep]
+X_test  = X_test[keep]
 
-# Scaler
+print("Selected features:", keep)
+print("Train shape:", X_train.shape, "Test shape:", X_test.shape)
+
 scaler = StandardScaler(with_mean=True)
 X_train_s = scaler.fit_transform(X_train)
 X_test_s  = scaler.transform(X_test)
 
-# Modelo base
-print("\n=== HistGradientBoosting + Calibration (3 classes) ===")
-base = HistGradientBoostingClassifier(random_state=RND)
+print("\n=== HistGradientBoosting + Isotonic Calibration ===")
+base = HistGradientBoostingClassifier(
+    random_state=RND,
+    class_weight="balanced",
+    max_depth=6,
+    learning_rate=0.05,
+    min_samples_leaf=20,
+    l2_regularization=1.0
+)
 base.fit(X_train_s, y_train)
 
-# Calibrado
-calibrated = CalibratedClassifierCV(estimator=base, cv=3, method="sigmoid")
+calibrated = CalibratedClassifierCV(estimator=base, cv=3, method="isotonic")
 calibrated.fit(X_train_s, y_train)
 
-# Avaliação
 pred = calibrated.predict(X_test_s)
 proba = calibrated.predict_proba(X_test_s)
 
@@ -68,13 +78,12 @@ f1 = f1_score(y_test, pred, average="macro")
 print(f"acc={acc:.3f} | f1_macro={f1:.3f} | log_loss={log_loss(y_test, proba):.3f}")
 print(classification_report(y_test, pred, target_names=["AwayWin","HomeWin","Draw"]))
 
-# Bundle: calibrado p/ previsões, raw_model p/ SHAP
 bundle = {
-    "model": calibrated,            # usado no serve.py p/ probs
-    "raw_model": base,              # usado no serve.py p/ SHAP
+    "model": calibrated,
+    "raw_model": base,
     "scaler": scaler,
-    "features": list(X_train.columns),  # só features válidas
-    "labels": ["AwayWin","HomeWin","Draw"], 
+    "features": list(X_train.columns),
+    "labels": ["AwayWin","HomeWin","Draw"],
     "n_roll": N_ROLL
 }
 joblib.dump(bundle, MODEL)
