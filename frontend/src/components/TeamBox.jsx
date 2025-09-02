@@ -5,11 +5,11 @@ export default function TeamBox({ team }) {
     <div className="team-box">
       {team ? (
         <div className="team-content">
-          <img src={team.logo} alt={team.name} className="team-logo" />
+          <img src={`http://localhost:8080${team.logo}`} alt={team.name} className="team-logo" />
           <p>{team.name}</p>
         </div>
       ) : (
-        <p className="placeholder">No team selected</p>
+        <p className="placeholder">Select a team</p>
       )}
     </div>
   );

@@ -95,7 +95,7 @@ def predict():
         "away_team": away,
         "winner": winner,
         "probabilities": probs,
-        "keyFactors": feature_importance,
+        "keyFactors": feature_importance if feature_importance else ["No significant factors identified."],
         "n_features": len(FEATURES)
     })
 
