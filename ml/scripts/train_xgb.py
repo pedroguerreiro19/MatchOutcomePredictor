@@ -21,17 +21,14 @@ N_ROLL = 10
 print("Loading:", DATA)
 df = pd.read_csv(DATA, parse_dates=["date"]).sort_values("date").reset_index(drop=True)
 
-# split train/test
 cut = int(len(df) * 0.8)
 df_train, df_test = df.iloc[:cut], df.iloc[cut:]
 
-# gera features
 X_train, y_train = build_features(df_train, n=N_ROLL, mode="train")
 X_test, y_test   = build_features(df_test,  n=N_ROLL, mode="train")
 
 print("Train shape:", X_train.shape, "Test shape:", X_test.shape)
 
-# === XGBoost ===
 print("\n=== XGBoost (3 classes) ===")
 model = XGBClassifier(
     objective="multi:softprob",

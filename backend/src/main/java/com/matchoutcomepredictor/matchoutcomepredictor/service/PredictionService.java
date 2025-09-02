@@ -12,9 +12,9 @@ public class PredictionService {
 
     public PredictionResponse getPrediction(PredictionRequest request) {
         try {
-            String url = "http://localhost:5000/predict";
+            String url = "http://localhost:8000/predict";
 
-            Map<String, String> payload = Map.of("home_team", request.getTeamA(), "away_team", request.getTeamB());
+            Map<String, String> payload = Map.of("home_team", request.getHomeTeam(), "away_team", request.getAwayTeam());
 
             Map response = restTemplate.postForObject(url, payload, Map.class);
 
@@ -29,10 +29,16 @@ public class PredictionService {
 
             return new PredictionResponse(winner, probabilities, keyFactors);
         } catch (Exception e) {
-            e.PrintStackTrace();
+            e.printStackTrace();
 
-            List<String> factors = List.of("Fallback: ML service unavailable");
-            return new PredictionResponse("Unknown", probs, factors);
+            Map<String, Double> fallbackProbs = Map.of(
+                "HomeWin", 0.0,
+                "AwayWin", 0.0,
+                "Draw", 0.0
+            );
+            List<String> fallbackFactors = List.of("Fallback: ML service unavailable");
+
+            return new PredictionResponse("Unknown", fallbackProbs, fallbackFactors);
         }
     }
 

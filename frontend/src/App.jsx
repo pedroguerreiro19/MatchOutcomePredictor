@@ -51,7 +51,7 @@ export default function App() {
           >
             <option value="">Choose home team</option>
             {teams
-              .filter((c) => t.name !== teamB?.name)
+              .filter((t) => t.name !== teamB?.name)
               .map((team) => (
                 <option key={team.name} value={team.name}>
                   {team.name}
@@ -66,7 +66,7 @@ export default function App() {
           <TeamBox team={teamB} />
           <select
             onChange={(e) =>
-              setTeamB(teams.find((c) => t.name === e.target.value))
+              setTeamB(teams.find((t) => t.name === e.target.value))
             }
             value={teamB?.name || ""}
           >
@@ -91,16 +91,20 @@ export default function App() {
           <h2>Predicted Winner: {result.prediction}</h2>
           <h3>Probabilities:</h3>
             <ul>
-              {Object.entries(result.probabilities).map(([team, prob]) => (
-                <li key={team}>
-                  {team}: {prob * 100}.toFixed(2)%
+              {Object.entries(result.probabilities).map(([outcome, prob]) => (
+                <li key={outcome}>
+                  {outcome}: {(prob * 100).toFixed(2)}%
                 </li>
               ))}
             </ul>
             <h3>Key factors: </h3>
             <ul>
               {result.keyFactors.map((factor, idx) => (
-                <li key={idx}>{factor}</li>
+                <li key={idx}>
+                  {typeof factor === "string"
+                  ? factor
+                  : `${factor.feature}: ${factor.impact.toFixed(3)}`}
+                  </li>
               ))}
             </ul>
             </div>

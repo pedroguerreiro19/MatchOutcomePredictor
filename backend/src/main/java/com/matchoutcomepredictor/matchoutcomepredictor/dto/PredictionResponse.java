@@ -6,7 +6,7 @@ import java.util.List;
 public class PredictionResponse {
     private String prediction;
     private Map<String, Double> probabilities;
-    private List<String> keyFactors;
+    private List<String, Double> keyFactors;
 
     public PredictionResponse(String prediction, Map<String, Double> probabilities, List<String> keyFactor ) {
         this.prediction = prediction;
