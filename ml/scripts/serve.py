@@ -5,12 +5,11 @@ import shap
 from feature_pipeline import build_features_for_match, build_features
 
 BASE = Path(__file__).resolve().parents[1]
-DATA = BASE / "data" / "clean" / "matches_P1_2122_2526.csv"
-BUNDLE = joblib.load(BASE / "models" / "model.pkl")
+DATA = BASE / "data" / "clean" / "matches_P1_1011_2526.csv"
+BUNDLE = joblib.load(BASE / "models" / "model_xgb.pkl")
 
 MODEL    = BUNDLE["model"]
-RAW_MODEL = BUNDLE.get("raw_model") 
-SCALER   = BUNDLE["scaler"]
+RAW_MODEL = BUNDLE.get("raw_model")
 FEATURES = BUNDLE["features"]
 LABELS   = BUNDLE["labels"]
 N_ROLL   = int(BUNDLE.get("n_roll", 5))
@@ -18,16 +17,11 @@ N_ROLL   = int(BUNDLE.get("n_roll", 5))
 HIST = pd.read_csv(DATA, parse_dates=["date"]).sort_values("date")
 app = Flask(__name__)
 
-
 X_bg, _ = build_features(HIST, n=N_ROLL, mode="train")
 X_bg = X_bg.loc[:, ~X_bg.columns.duplicated()]
 X_bg = X_bg.reindex(columns=FEATURES).fillna(0.0)
-background = SCALER.transform(X_bg.sample(min(100, len(X_bg)), random_state=42))
 
-if RAW_MODEL is not None:
-    EXPLAINER = shap.TreeExplainer(RAW_MODEL)
-else:
-    EXPLAINER = shap.KernelExplainer(MODEL.predict_proba, background)
+EXPLAINER = shap.TreeExplainer(MODEL)
 
 
 @app.get("/health")
@@ -56,31 +50,33 @@ def predict():
 
     X = X.loc[:, ~X.columns.duplicated()]
     X = X.reindex(columns=FEATURES).fillna(0.0)
-    Xs = SCALER.transform(X)
 
-    proba = MODEL.predict_proba(Xs)[0]
+    proba = MODEL.predict_proba(X)[0]
     probs = {cls: float(p) for cls, p in zip(LABELS, proba)}
     winner = max(probs, key=probs.get)
 
-    shap_values = EXPLAINER.shap_values(Xs)
+    shap_values = EXPLAINER.shap_values(X)
 
-    pred_class_idx = LABELS.index(winner)
-    values = shap_values[0, :, pred_class_idx]
+    if isinstance(shap_values, list):  
+        pred_class_idx = LABELS.index(winner)
+        values = shap_values[pred_class_idx][0]  
+    else:
+        values = shap_values[0]
+
+    values = np.array(values).ravel()
 
     feature_importance = sorted(
-        zip(FEATURES, values),
-        key=lambda x: abs(x[1]),
-        reverse=True
+    [{"feature": f, "impact": float(v)} for f, v in zip(FEATURES, values)],
+    key=lambda x: abs(x["impact"]),
+    reverse=True
     )[:3]
-
-    key_factors = [f"{feat}: {val:+.3f}" for feat, val in feature_importance]   
 
     return jsonify({
         "home_team": home,
         "away_team": away,
         "winner": winner,
         "probabilities": probs,
-        "keyFactors": key_factors,
+        "keyFactors": feature_importance,
         "n_features": len(FEATURES)
     })
 

@@ -3,7 +3,7 @@ import pandas as pd
 
 BASE = Path(__file__).resolve().parents[1]
 CLEAN_PATH = BASE / "data" / "clean"
-OUT_PATH = BASE / "data" / "clean" / "matches_P1_2122_2526.csv"
+OUT_PATH = BASE / "data" / "clean" / "matches_P1_1011_2526.csv"
 
 dfs = []
 for p in sorted(CLEAN_PATH.glob("cleanP1_*.csv")):

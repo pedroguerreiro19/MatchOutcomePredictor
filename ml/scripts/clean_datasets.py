@@ -33,6 +33,9 @@ RENAME = {
     "HY": "home_yellow", "AY": "away_yellow",
     "HR": "home_red",    "AR": "away_red",
     "HBP": "home_bookings_pts", "ABP": "away_bookings_pts",
+    "B365H": "home_odds",
+    "B365D": "draw_odds",
+    "B365A": "away_odds",
 }
 
 def _to_num(s: pd.Series): return pd.to_numeric(s, errors="coerce")
@@ -61,7 +64,7 @@ def process_one(in_path: Path) -> Path:
             out[tgt] = pd.to_datetime(df[src], dayfirst=True, errors="coerce")
         elif src in {
             "FTHG","FTAG","HTHG","HTAG","HS","AS","HST","AST","HHW","AHW",
-            "HC","AC","HF","AF","HFKC","AFKC","HO","AO","HY","AY","HR","AR","Attendance"
+            "HC","AC","HF","AF","HFKC","AFKC","HO","AO","HY","AY","HR","AR","Attendance", "B365H","B365D","B365A"
         }:
             out[tgt] = _to_num(df[src])
         else:
