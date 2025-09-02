@@ -30,7 +30,7 @@ public class TeamController {
             new TeamDto("Rio Ave FC", "/logos/rio_ave.png" ),
             new TeamDto("Santa Clara", "/logos/santa_clara.png" ),
             new TeamDto("Sporting CP", "/logos/sporting.png" ),
-            new TeamDto("CD Tondela", "/logos/tondela.png" ),
+            new TeamDto("CD Tondela", "/logos/tondela.png" )
             );
     }
 }

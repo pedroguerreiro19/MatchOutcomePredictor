@@ -1,4 +1,4 @@
-package com.matchoutcomepredictor.matchoutcomepredictor;
+package com.matchoutcomepredictor;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

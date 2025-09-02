@@ -1,4 +1,4 @@
-package com.matchoutcomepredictor.controller
+package com.matchoutcomepredictor.controller;
 
 import com.matchoutcomepredictor.dto.PredictionRequest;
 import com.matchoutcomepredictor.dto.PredictionResponse;
@@ -10,14 +10,14 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin(origins = "http://localhost:5173")
 public class PredictionController {
 
-    private final PredictionService predictionservice;
+    private final PredictionService predictionService;
 
-    public PredictionController(PredictionService predictionservice) {
+    public PredictionController(PredictionService predictionService) {
         this.predictionService = predictionService;
     }
 
     @PostMapping("/predict")
-    public PredictionResponse predict(@RequestBody predictionRequest request) {
+    public PredictionResponse predict(@RequestBody PredictionRequest request) {
         return predictionService.getPrediction(request);
     }
 }

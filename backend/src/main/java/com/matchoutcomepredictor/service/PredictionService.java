@@ -1,6 +1,6 @@
 package com.matchoutcomepredictor.service;
 
-import com.matchoutcomepredictor.dto.predictionRequest;
+import com.matchoutcomepredictor.dto.PredictionRequest;
 import com.matchoutcomepredictor.dto.PredictionResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -10,11 +10,20 @@ import java.util.*;
 @Service
 public class PredictionService {
 
+    private final RestTemplate restTemplate;
+
+    public PredictionService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
     public PredictionResponse getPrediction(PredictionRequest request) {
         try {
             String url = "http://localhost:8000/predict";
 
-            Map<String, String> payload = Map.of("home_team", request.getHomeTeam(), "away_team", request.getAwayTeam());
+            Map<String, String> payload = Map.of(
+                "home_team", request.getHomeTeam(),
+                "away_team", request.getAwayTeam()
+            );
 
             Map response = restTemplate.postForObject(url, payload, Map.class);
 
@@ -22,10 +31,9 @@ public class PredictionService {
                 throw new RuntimeException("Empty response from ML service.");
             }
 
-            String winner = (String) reponse.get("winner");
-            Map<String, Double> probabilities = (Map<String, Double>) reponse.get("probabilities");
-            List<String> keyFactors = (List<String>) reponse.get("keyFactors");
-
+            String winner = (String) response.get("winner");
+            Map<String, Double> probabilities = (Map<String, Double>) response.get("probabilities");
+            List<String> keyFactors = (List<String>) response.get("keyFactors");
 
             return new PredictionResponse(winner, probabilities, keyFactors);
         } catch (Exception e) {
@@ -41,5 +49,4 @@ public class PredictionService {
             return new PredictionResponse("Unknown", fallbackProbs, fallbackFactors);
         }
     }
-
 }
