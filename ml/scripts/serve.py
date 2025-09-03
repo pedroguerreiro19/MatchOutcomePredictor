@@ -38,7 +38,12 @@ X_bg, _ = build_features(HIST, n=N_ROLL, mode="train")
 X_bg = X_bg.loc[:, ~X_bg.columns.duplicated()]
 X_bg = X_bg.reindex(columns=FEATURES).fillna(0.0)
 
-EXPLAINER = shap.TreeExplainer(MODEL, feature_perturbation="interventional")
+if hasattr(MODEL, "calibrated_classifiers_"):
+    base_model = MODEL.calibrated_classifiers_[0].estimator
+else:
+    base_model = MODEL
+
+EXPLAINER = shap.TreeExplainer(base_model, feature_perturbation="interventional")
 
 @app.get("/health")
 def health():
