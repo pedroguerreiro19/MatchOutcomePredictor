@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "./api";
 import TeamBox from "./components/TeamBox";
 import "./App.css";
+import { factorTemplates } from "./utils/factorTemplates";
 
 export default function App() {
   const [teams, setTeams] = useState([]);
@@ -34,10 +35,25 @@ export default function App() {
     <div className="app">
       <h1 className="title">Portuguese League Match Outcome Predictor</h1>
       <p className="info-text">
-        This project uses machine learning to predict the outcome of matches in
-        the 2025/26 Portuguese League season. The model was trained using
-        historical match data since 2010. Some teams have fewer games in the
-        first portuguese divison, which may affect prediction accuracy.
+        <p>
+          This project uses a machine learning model trained on Portuguese
+          League data, from 2010 till 2025. The model considers: team form (last 10
+          games), gameplay stats (fouls, cards, corners, shots), league ranking,
+          Elo ratings, and head-to-head results.
+        </p>
+
+        <p>
+          <strong>How Elo works:</strong> Each team starts with a baseline
+          rating. Beating a stronger team gives a large Elo boost, while beating
+          a weaker team gives a smaller boost. Losing to a weaker team causes a
+          big Elo drop, and draws slightly benefit the weaker side. Playing at
+          home also provides a small Elo bonus.
+        </p>
+
+        <p>
+          These features are combined and fed into an ensemble ML model that
+          predicts the probability of home win, draw, or away win.
+        </p>
       </p>
 
       <div className="teams-boxes">
@@ -45,7 +61,7 @@ export default function App() {
           <TeamBox team={teamA} />
           <select
             onChange={(e) => {
-              setTeamA(teams.find((t) => t.name === e.target.value))
+              setTeamA(teams.find((t) => t.name === e.target.value));
               setResult(null);
             }}
             value={teamA?.name || ""}
@@ -67,7 +83,7 @@ export default function App() {
           <TeamBox team={teamB} />
           <select
             onChange={(e) => {
-              setTeamB(teams.find((t) => t.name === e.target.value))
+              setTeamB(teams.find((t) => t.name === e.target.value));
               setResult(null);
             }}
             value={teamB?.name || ""}
@@ -91,7 +107,7 @@ export default function App() {
       {result && (
         <div className="result">
           <h2>
-            Predicted outcome:{ " "}
+            Predicted outcome:{" "}
             {result.prediction === "HomeWin"
               ? teamA.name + " victory 🏆"
               : result.prediction === "AwayWin"
@@ -103,8 +119,10 @@ export default function App() {
             {result.probabilities &&
               Object.entries(result.probabilities).map(([outcome, prob]) => {
                 let label = outcome;
-                if (outcome === "HomeWin") label = `${teamA.name} win probability`;
-                else if (outcome === "AwayWin") label = `${teamB.name} win probability`;
+                if (outcome === "HomeWin")
+                  label = `${teamA.name} win probability`;
+                else if (outcome === "AwayWin")
+                  label = `${teamB.name} win probability`;
                 else label = "Draw";
 
                 return (
@@ -115,59 +133,36 @@ export default function App() {
               })}
           </ul>
 
-<h3>Factors that influenced the prediction:</h3>
-<ul>
-  {result.keyFactors && result.keyFactors.length > 0 ? (
-    result.keyFactors.map((factor, idx) => {
-      let text = "";
-      let emoji = "";
-      let cssClass = "factor-neutral";
+          <h3>Factors that influenced the prediction:</h3>
+          <ul>
+            {result.keyFactors && result.keyFactors.length > 0 ? (
+              result.keyFactors.map((factor, idx) => {
+                const template = factorTemplates[factor.feature];
+                if (!template) {
+                  return (
+                    <li key={idx} className="factor-item">
+                      ℹ️ {factor.feature}: no explanation available
+                    </li>
+                  );
+                }
 
-      if (factor.feature.includes("League Rank")) {
-        emoji = "📊";
-        if (factor.impact > 0) {
-          text = `The league position favors ${teamA.name}.`;
-          cssClass = "factor-home";
-        } else if (factor.impact < 0) {
-          text = `The league position favors ${teamB.name}.`;
-          cssClass = "factor-away";
-        } else {
-          text = "The league position is evenly matched.";
-        }
-      } else if (factor.feature.includes("Elo Rating")) {
-        emoji = "📈";
-        if (factor.impact > 0) {
-          text = `The Elo rating suggests an advantage for ${teamA.name}.`;
-          cssClass = "factor-home";
-        } else if (factor.impact < 0) {
-          text = `The Elo rating suggests an advantage for ${teamB.name}.`;
-          cssClass = "factor-away";
-        } else {
-          text = "The Elo rating suggests the teams are evenly matched.";
-        }
-      } else if (factor.feature.includes("Avg Goals")) {
-        emoji = "⚽";
-        if (factor.impact < 0) {
-          text = `${teamA.name} has scored more goals on average in the last 10 matches.`;
-          cssClass = "factor-home";
-        } else if (factor.impact > 0) {
-          text = `${teamB.name} has scored more goals on average in the last 10 matches.`;
-          cssClass = "factor-away";
-        } else {
-          text = "Both teams scored about the same in their last 10 matches.";
-        }
-      }
+                let text;
+                if (factor.impact > 0.01)
+                  text = template.positive(teamA.name, teamB.name);
+                else if (factor.impact < -0.01)
+                  text = template.negative(teamA.name, teamB.name);
+                else text = template.neutral(teamA.name, teamB.name);
 
-      return (
-        <li key={idx} className={`factor-item ${cssClass}`}>
-          {emoji} {text}
-        </li>
-      );
-    })
-  ) : (
-    <li>No key factors available</li>
-  )}
-</ul>
+                return (
+                  <li key={idx} className="factor-item">
+                    {template.emoji} {text}
+                  </li>
+                );
+              })
+            ) : (
+              <li>No key factors available</li>
+            )}
+          </ul>
         </div>
       )}
     </div>

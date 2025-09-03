@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 
-
 def _team_view(m: pd.DataFrame, side: str) -> pd.DataFrame:
     opp = "away" if side == "home" else "home"
     return pd.DataFrame({
@@ -62,7 +61,6 @@ def compute_elo(matches: pd.DataFrame, k=20.0, home_adv=50.0, start_elo=1500.0) 
 
 def _rolling_team_stats(team_games: pd.DataFrame, n=5, shift_values=True):
     g = team_games.sort_values("date").copy()
-    print(f"Team stats input: {len(g)} games, team: {g['team'].iloc[0] if len(g) > 0 else 'EMPTY'}")
     
     g["win"]  = (g["gf"] > g["ga"]).astype(int)
     g["draw"] = (g["gf"] == g["ga"]).astype(int) 
@@ -73,7 +71,6 @@ def _rolling_team_stats(team_games: pd.DataFrame, n=5, shift_values=True):
         if c in g:
             roll = g[c].rolling(n, min_periods=1).mean()
             g[f"{c}_r{n}"] = roll.shift(1) if shift_values else roll
-            print(f"  {c}_r{n}: min={g[f'{c}_r{n}'].min():.2f}, max={g[f'{c}_r{n}'].max():.2f}")
 
     return g
 
@@ -153,7 +150,6 @@ def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFra
     stack = pd.concat([home, away], ignore_index=True)
     rolled = stack.groupby("team", group_keys=False).apply(lambda df: _rolling_team_stats(df, n=n))
 
-    # FIXED: Proper alignment of features with matches
     home_features = []
     away_features = []
     
@@ -162,7 +158,6 @@ def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFra
         away_team = row["away_team"]
         match_date = row["date"]
         
-        # Get the most recent stats for each team before this match
         home_stats = rolled[
             (rolled["team"] == home_team) & 
             (rolled["date"] <= match_date)
@@ -173,7 +168,6 @@ def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFra
             (rolled["date"] <= match_date)
         ].sort_values("date").tail(1)
         
-        # Create feature row for this match
         home_row = {}
         away_row = {}
         
@@ -193,14 +187,11 @@ def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFra
         home_features.append(home_row)
         away_features.append(away_row)
     
-    # Convert to DataFrames
     H = pd.DataFrame(home_features)
     A = pd.DataFrame(away_features)
     
-    # Combine with match data
     X = pd.concat([m.reset_index(drop=True), H.reset_index(drop=True), A.reset_index(drop=True)], axis=1)
 
-    # Add rankings
     ranks_list = []
     for _, row in m.iterrows():
         ranks = _ranking_at_date(m, row["date"])
@@ -212,7 +203,6 @@ def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFra
     ranks_df["rank_diff"] = ranks_df["home_rank"] - ranks_df["away_rank"]
     X = pd.concat([X.reset_index(drop=True), ranks_df.reset_index(drop=True)], axis=1)
 
-    # Calculate feature differences
     feats = {}
     for c in ["gf","ga","win","draw","loss","points","shots","shots_ot","fouls","yellow","red","corners"]:
         home_col = f"home_{c}_r{n}"
@@ -224,17 +214,6 @@ def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFra
 
     feats["elo_diff"] = X["elo_diff"]
     feats["rank_diff"] = X["rank_diff"]
-
-    print(f"\n=== SAMPLE FEATURE CALCULATION DEBUG ===")
-    if len(feats) > 0:
-        sample_idx = 0 if len(m) == 0 else min(5, len(m)-1)
-        print(f"Match {sample_idx}: {m.iloc[sample_idx]['home_team']} vs {m.iloc[sample_idx]['away_team']}")
-        for feat, values in feats.items():
-            if hasattr(values, 'iloc'):
-                val = values.iloc[sample_idx] if len(values) > sample_idx else 0
-                if abs(val) > 0.001:  
-                    print(f"  {feat}: {val:.3f}")
-    print("==========================================\n")
 
     Xf = pd.DataFrame(feats).fillna(0.0)
     if target is not None:
@@ -249,21 +228,6 @@ def build_features_for_match(hist: pd.DataFrame, home: str, away: str, n=5, feat
     if past.empty:
         raise ValueError("No history available.")
 
-    print(f"\n=== DEBUG: Building features for {home} vs {away} ===")
-    print(f"Historical data: {len(past)} matches from {past['date'].min()} to {past['date'].max()}")
-    
-    home_matches = past[(past['home_team'] == home) | (past['away_team'] == home)]
-    away_matches = past[(past['home_team'] == away) | (past['away_team'] == away)]
-    print(f"{home} matches in history: {len(home_matches)}")
-    print(f"{away} matches in history: {len(away_matches)}")
-    
-    if len(home_matches) == 0:
-        print(f"ERROR: No historical data found for {home}")
-        print(f"Available home teams: {sorted(past['home_team'].unique())[:10]}...")
-    if len(away_matches) == 0:
-        print(f"ERROR: No historical data found for {away}")
-        print(f"Available away teams: {sorted(past['away_team'].unique())[:10]}...")
-
     past = compute_elo(past)
     
     final_elos = {}
@@ -271,56 +235,18 @@ def build_features_for_match(hist: pd.DataFrame, home: str, away: str, n=5, feat
         final_elos[row['home_team']] = row['home_elo_pre']
         final_elos[row['away_team']] = row['away_elo_pre']
     
-    print(f"Final ELO - {home}: {final_elos.get(home, 'NOT FOUND')}")
-    print(f"Final ELO - {away}: {final_elos.get(away, 'NOT FOUND')}")
-
     home_view = _team_view(past, "home")
     away_view = _team_view(past, "away")
     stack = pd.concat([home_view, away_view], ignore_index=True)
     rolled = stack.groupby("team", group_keys=False).apply(lambda df: _rolling_team_stats(df, n=n, shift_values=False))
 
-    print(f"\nTeams in rolled stats: {sorted(rolled['team'].unique())}")
-    
     H = rolled[rolled["team"] == home].sort_values("date").tail(1).add_prefix("home_")
     A = rolled[rolled["team"] == away].sort_values("date").tail(1).add_prefix("away_")
     
-    print(f"\nHome team ({home}) stats shape: {H.shape}")
-    print(f"Away team ({away}) stats shape: {A.shape}")
-    
-    if H.empty:
-        print(f"ERROR: No rolled stats found for home team {home}")
-        available_home_teams = rolled['team'].unique()
-        print(f"Available teams in rolled stats: {sorted(available_home_teams)}")
-        raise ValueError(f"Not enough history for home team {home}.")
-        
-    if A.empty:
-        print(f"ERROR: No rolled stats found for away team {away}")
-        available_away_teams = rolled['team'].unique()
-        print(f"Available teams in rolled stats: {sorted(available_away_teams)}")
-        raise ValueError(f"Not enough history for away team {away}.")
-
-    if not H.empty:
-        print(f"\n{home} recent form (last {n} games):")
-        print(f"  Goals scored: {H[f'home_gf_r{n}'].values[0]:.2f}")
-        print(f"  Goals conceded: {H[f'home_ga_r{n}'].values[0]:.2f}")
-        print(f"  Wins: {H[f'home_win_r{n}'].values[0]:.2f}")
-        print(f"  Points: {H[f'home_points_r{n}'].values[0]:.2f}")
-    
-    if not A.empty:
-        print(f"\n{away} recent form (last {n} games):")
-        print(f"  Goals scored: {A[f'away_gf_r{n}'].values[0]:.2f}")
-        print(f"  Goals conceded: {A[f'away_ga_r{n}'].values[0]:.2f}")
-        print(f"  Wins: {A[f'away_win_r{n}'].values[0]:.2f}")
-        print(f"  Points: {A[f'away_points_r{n}'].values[0]:.2f}")
-
     base = pd.concat([H.reset_index(drop=True), A.reset_index(drop=True)], axis=1)
 
     last_date = past["date"].max()
     ranks = _ranking_at_date(past, last_date + pd.Timedelta(days=1))
-    
-    print(f"\nCurrent rankings:")
-    print(f"  {home}: {ranks.get(home, 'NOT FOUND')}")
-    print(f"  {away}: {ranks.get(away, 'NOT FOUND')}")
     
     rank_diff = (ranks.get(home, 18) - ranks.get(away, 18))  
 
@@ -336,9 +262,6 @@ def build_features_for_match(hist: pd.DataFrame, home: str, away: str, n=5, feat
     feats["elo_diff"] = home_elo - away_elo
     feats["rank_diff"] = rank_diff
 
-    print(f"\nCalculated ELO diff: {home_elo:.1f} - {away_elo:.1f} = {feats['elo_diff']:.1f}")
-    print(f"Calculated rank diff: {ranks.get(home, 18)} - {ranks.get(away, 18)} = {feats['rank_diff']}")
-
     h2h = _h2h_stats(past, home, away, n=n)
     feats.update(h2h)
 
@@ -346,11 +269,4 @@ def build_features_for_match(hist: pd.DataFrame, home: str, away: str, n=5, feat
     if features is not None:
         X = X.reindex(columns=features, fill_value=0.0)
 
-    print(f"\n=== Final Features for {home} vs {away} ===")
-    for col, val in X.iloc[0].items():
-        if abs(val) > 0.001:  
-            print(f"{col}: {val}")
-    print("===================================\n")
-
-    
     return X

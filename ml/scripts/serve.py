@@ -18,7 +18,9 @@ FEATURE_NAMES = {
     "fouls_diff_r10": "Avg Fouls (last 10)",
     "yellow_diff_r10": "Avg Yellow Cards (last 10)",
     "red_diff_r10": "Avg Red Cards (last 10)",
-    "corners_diff_r10": "Avg Corners (last 10)"
+    "corners_diff_r10": "Avg Corners (last 10)",
+    "h2h_win_home": "Head-to-Head Home Wins",
+    "h2h_win_away": "Head-to-Head Away Wins"
 }
 
 BASE = Path(__file__).resolve().parents[1]
