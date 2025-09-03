@@ -74,31 +74,35 @@ def _rolling_team_stats(team_games: pd.DataFrame, n=5, shift_values=True):
     return g
 
 
-def _ranking_at_date(df: pd.DataFrame, date: pd.Timestamp) -> dict:
-    past = df[df["date"] < date].copy()
+def _ranking_at_date(df: pd.DataFrame, date: pd.Timestamp, n_teams: int = 18) -> dict:
+    season = df[df["date"].dt.year == date.year] 
+    past = season[season["date"] < date].copy()
     if past.empty:
         return {}
 
     pts_home = np.where(past["home_goals"] > past["away_goals"], 3,
-                 np.where(past["home_goals"] == past["away_goals"], 1, 0))
+                        np.where(past["home_goals"] == past["away_goals"], 1, 0))
     pts_away = np.where(past["away_goals"] > past["home_goals"], 3,
-                 np.where(past["away_goals"] == past["home_goals"], 1, 0))
+                        np.where(past["away_goals"] == past["home_goals"], 1, 0))
 
     standings = (
         pd.concat([
             pd.DataFrame({"team": past["home_team"], "pts": pts_home, "gf": past["home_goals"], "ga": past["away_goals"]}),
             pd.DataFrame({"team": past["away_team"], "pts": pts_away, "gf": past["away_goals"], "ga": past["home_goals"]})
         ])
-        .groupby("team", as_index=False)
-        .sum()
+        .groupby("team", as_index=False).sum()
     )
 
     standings["gd"] = standings["gf"] - standings["ga"]
     standings = standings.sort_values(["pts","gd","gf"], ascending=False)
     standings["rank"] = range(1, len(standings) + 1)
 
-    return dict(zip(standings["team"], standings["rank"]))
+    rank_map = dict(zip(standings["team"], standings["rank"]))
+    for team in set(df["home_team"]) | set(df["away_team"]):
+        if team not in rank_map:
+            rank_map[team] = n_teams  
 
+    return rank_map
 
 def _h2h_stats(matches: pd.DataFrame, home: str, away: str, n=5):
     h2h = matches[((matches["home_team"] == home) & (matches["away_team"] == away)) |

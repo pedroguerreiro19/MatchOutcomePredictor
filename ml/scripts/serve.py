@@ -88,7 +88,7 @@ def predict():
         [{"feature": FEATURE_NAMES.get(f, f), "impact": round(float(v), 4)} for f, v in zip(FEATURES, values)],
         key=lambda x: abs(x["impact"]),
         reverse=True
-    )[:3]
+    )[:2]
 
     return jsonify({
         "home_team": home,
