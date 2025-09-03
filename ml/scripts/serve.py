@@ -33,6 +33,7 @@ N_ROLL   = int(BUNDLE.get("n_roll", 5))
 HIST = pd.read_csv(DATA, parse_dates=["date"]).sort_values("date")
 app = Flask(__name__)
 
+
 X_bg, _ = build_features(HIST, n=N_ROLL, mode="train")
 X_bg = X_bg.loc[:, ~X_bg.columns.duplicated()]
 X_bg = X_bg.reindex(columns=FEATURES).fillna(0.0)
@@ -88,7 +89,7 @@ def predict():
         [{"feature": FEATURE_NAMES.get(f, f), "impact": round(float(v), 4)} for f, v in zip(FEATURES, values)],
         key=lambda x: abs(x["impact"]),
         reverse=True
-    )[:2]
+    )[:5]
 
     return jsonify({
         "home_team": home,

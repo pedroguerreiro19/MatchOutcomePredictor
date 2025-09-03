@@ -74,12 +74,16 @@ def _rolling_team_stats(team_games: pd.DataFrame, n=5, shift_values=True):
     return g
 
 
+def _season_year(date: pd.Timestamp) -> int:
+    return date.year if date.month >= 8 else date.year - 1
+
 def _ranking_at_date(df: pd.DataFrame, date: pd.Timestamp, n_teams: int = 18) -> dict:
-    season = df[df["date"].dt.year == date.year] 
+    season_year = _season_year(date)
+    season = df[df["date"].apply(_season_year) == season_year]
     past = season[season["date"] < date].copy()
     if past.empty:
         return {}
-
+    
     pts_home = np.where(past["home_goals"] > past["away_goals"], 3,
                         np.where(past["home_goals"] == past["away_goals"], 1, 0))
     pts_away = np.where(past["away_goals"] > past["home_goals"], 3,
@@ -94,14 +98,13 @@ def _ranking_at_date(df: pd.DataFrame, date: pd.Timestamp, n_teams: int = 18) ->
     )
 
     standings["gd"] = standings["gf"] - standings["ga"]
-    standings = standings.sort_values(["pts","gd","gf"], ascending=False)
+    standings = standings.sort_values(["pts", "gd", "gf"], ascending=False)
     standings["rank"] = range(1, len(standings) + 1)
 
     rank_map = dict(zip(standings["team"], standings["rank"]))
     for team in set(df["home_team"]) | set(df["away_team"]):
         if team not in rank_map:
             rank_map[team] = n_teams  
-
     return rank_map
 
 def _h2h_stats(matches: pd.DataFrame, home: str, away: str, n=5):
@@ -158,7 +161,7 @@ def build_features(matches: pd.DataFrame, n=5, mode="train") -> tuple[pd.DataFra
             "away_rank": ranks.get(row["away_team"], np.nan)
         })
     ranks_df = pd.DataFrame(ranks_list)
-    ranks_df["rank_diff"] = ranks_df["away_rank"] - ranks_df["home_rank"]
+    ranks_df["rank_diff"] = ranks_df["home_rank"] - ranks_df["away_rank"]
     X = pd.concat([X.reset_index(drop=True), ranks_df.reset_index(drop=True)], axis=1)
 
     feats = {}
@@ -197,7 +200,7 @@ def build_features_for_match(hist: pd.DataFrame, home: str, away: str, n=5, feat
 
     last_date = past["date"].max()
     ranks = _ranking_at_date(past, last_date + pd.Timedelta(days=1))
-    rank_diff = (ranks.get(away, 0) - ranks.get(home, 0))
+    rank_diff = (ranks.get(home, 0) - ranks.get(away, 0))
 
     feats = {}
     for c in ["gf","ga","win","draw","loss","points","shots","shots_ot","fouls","yellow","red","corners"]:
@@ -212,4 +215,9 @@ def build_features_for_match(hist: pd.DataFrame, home: str, away: str, n=5, feat
     X = pd.DataFrame([feats])
     if features is not None:
         X = X.reindex(columns=features, fill_value=0.0)
+
+    print(f"\n=== Features for {home} vs {away} ===")
+    for col, val in X.iloc[0].items():
+        print(f"{col}: {val}")
+    print("===================================\n")
     return X
