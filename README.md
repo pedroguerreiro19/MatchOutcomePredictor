@@ -53,7 +53,7 @@ cd MatchOutcomePredictor
 
 ### 2. Install dependencies
 
-Make sure you have **Python 3.11+** installed.  
+Make sure you have **Python** installed.  
 Then, create a virtual environment and install the required libraries:
 
 ```
@@ -170,4 +170,5 @@ The model is trained up to Matchday 4 of the 2025/2026 season.
 
 ## License
 MIT License. Feel free to use, modify, and share this project.
+
 
