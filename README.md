@@ -168,7 +168,6 @@ Conversely, losing to a weak team penalizes you harder.
 
 The model is trained up to Matchday 4 of the 2025/2026 season.
 
-## License
-MIT License. Feel free to use, modify, and share this project.
+
 
 
