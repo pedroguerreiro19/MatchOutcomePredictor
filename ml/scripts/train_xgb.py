@@ -42,7 +42,7 @@ for col in X_train.columns:
     train_range = X_train[col].max() - X_train[col].min()
     test_range = X_test[col].max() - X_test[col].min()
     if train_range > 0 and abs(train_range - test_range) / train_range > 0.5:
-        print(f"WARNING: {col} has very different ranges between train and test")
+        print(f"{col} has different ranges between train and test")
 
 print("\n=== APPLYING FEATURE SCALING ===")
 scaler = StandardScaler()
