@@ -41,9 +41,6 @@ public class PredictionService {
         try {
             String url = "http://localhost:8000/predict";
 
-            System.out.println("➡️ Home recebido: " + request.getHomeTeam());
-            System.out.println("➡️ Away recebido: " + request.getAwayTeam());
-
             String home = TEAM_NAME_MAP.getOrDefault(request.getHomeTeam(), request.getHomeTeam());
             String away = TEAM_NAME_MAP.getOrDefault(request.getAwayTeam(), request.getAwayTeam());
             Map<String, String> payload = Map.of(
